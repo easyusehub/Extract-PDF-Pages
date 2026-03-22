@@ -24,11 +24,6 @@
 ## 🔒 Privacy First
 All processing happens directly in your browser. Your files are never uploaded or stored on any server.
 
-## 🔗 More PDF Tools
-- 💧 Add PDF Watermark  
-- 🗑️ Delete PDF Pages  
-- 📊 PDF to Excel  
-- 📝 Word to PDF  
-
+  
 ## 📌 Keywords
 extract pdf pages, split pdf online, pdf page extractor, free pdf tools, client-side pdf editor, secure pdf tools
