@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🗂️ Extract Pages | EasyUseHub</title>
+<style>
+body, html { font-family:'Segoe UI',sans-serif; background:#fff; display:flex; justify-content:center; align-items:center; min-height:100vh; }
+.container { width:90%; max-width:650px; padding:25px; border-radius:12px; box-shadow:0 8px 25px rgba(0,0,0,0.1); text-align:center; }
+h2{margin-bottom:10px;color:#1e293b;}
+p.description{color:#475569;font-size:0.95rem;margin-bottom:20px;line-height:1.6;letter-spacing:0.5px;font-style:italic;}
+.upload{padding:25px;border:3px dashed #9333ea;border-radius:15px;cursor:pointer;margin-bottom:12px;font-weight:600;color:#9333ea;transition:0.3s;}
+.upload:hover{background:#f5e6fa;transform:scale(1.03);}
+button{padding:12px;border:none;border-radius:10px;font-weight:600;cursor:pointer;margin:10px 3px;background:#9333ea;color:#fff;transition:0.3s;}
+button:hover{background:#7e22ce;}
+#download-btn{display:none;background:#2563eb;}
+#download-btn:hover{background:#1e40af;}
+#status{margin-top:10px;color:#475569;}
+.bottom-buttons{display:flex;justify-content:center;gap:12px;margin-top:20px;}
+.bottom-buttons a{text-decoration:none;padding:10px 16px;border-radius:8px;background:#1e293b;color:#fff;font-weight:600;}
+.bottom-buttons a:hover{background:#3b82f6;}
+.ad-placeholder{margin:15px 0;padding:15px;border:2px dashed #ccc;border-radius:10px;color:#999;font-size:0.9rem;text-align:center;}
+</style>
+</head>
+<body>
+<div class="container">
+<h2>🗂️ Extract PDF Pages</h2>
+<p class="description">Select and extract specific pages from your PDF file.</p>
+<div class="ad-placeholder">Ad Placeholder</div>
+<div class="upload" onclick="document.getElementById('file').click()">📁 Upload PDF</div>
+<input type="file" id="file" accept="application/pdf" hidden>
+<input type="text" id="pages" placeholder="Enter pages (e.g., 1,3-5)" style="padding:10px;width:70%;margin-bottom:12px;">
+<button id="convert-btn">Extract Pages</button>
+<button id="download-btn">📥 Download PDF</button>
+<p id="status">No file selected</p>
+
+<div class="bottom-buttons">
+<a href="https://easyusehub.blogspot.com/p/free-pdf-tools-easyusehub.html?m=1" target="_blank">📂 All PDF Tools</a>
+<a href="https://easyusehub.blogspot.com/?m=1" target="_blank">🏠 Home</a>
+</div>
+
+<div class="ad-placeholder">Ad Placeholder</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script>
+let file=null;
+document.getElementById('file').addEventListener('change',e=>{
+    file=e.target.files[0];
+    if(!file)return;
+    if(file.size>30*1024*1024){alert('Max 30MB'); return;}
+    document.getElementById('status').textContent=`✔ ${file.name} selected`;
+});
+
+document.getElementById('convert-btn').addEventListener('click',async ()=>{
+    if(!file){alert('Upload PDF first');return;}
+    const pagesInput = document.getElementById('pages').value.trim();
+    if(!pagesInput){alert('Enter pages to extract');return;}
+    document.getElementById('status').textContent='Extracting pages...';
+    
+    const { PDFDocument } = PDFLib;
+    const arrayBuffer = await file.arrayBuffer();
+    const pdfDoc = await PDFDocument.load(arrayBuffer);
+    const newPdf = await PDFDocument.create();
+    const totalPages = pdfDoc.getPageCount();
+
+    const pages = [];
+    pagesInput.split(',').forEach(part=>{
+        if(part.includes('-')){
+            const [start,end] = part.split('-').map(Number);
+            for(let i=start;i<=end;i++) pages.push(i-1);
+        } else pages.push(Number(part)-1);
+    });
+
+    for(const i of pages){
+        if(i>=0 && i<totalPages){
+            const [copied] = await newPdf.copyPages(pdfDoc,[i]);
+            newPdf.addPage(copied);
+        }
+    }
+
+    const pdfBytes = await newPdf.save();
+    const blob = new Blob([pdfBytes],{type:'application/pdf'});
+    const url = URL.createObjectURL(blob);
+    const downloadBtn=document.getElementById('download-btn');
+    downloadBtn.style.display='block';
+    downloadBtn.onclick=()=>{const a=document.createElement('a');a.href=url;a.download=file.name.replace(/\.pdf$/i,'-extracted.pdf');a.click();};
+    document.getElementById('status').textContent='✔ Pages extracted! Download your PDF.';
+});
+</script>
+</body>
+</html>
