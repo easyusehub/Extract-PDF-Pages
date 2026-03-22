@@ -6,14 +6,16 @@
 <title>🗂️ Extract PDF Pages | EasyUseHub</title>
 <style>
 body, html { font-family:'Segoe UI',sans-serif; background:#fff; display:flex; justify-content:center; align-items:center; min-height:100vh; }
-.container { width:90%; max-width:700px; padding:25px; border-radius:12px; box-shadow:0 8px 25px rgba(0,0,0,0.1); text-align:center; }
+.container { width:90%; max-width:750px; padding:25px; border-radius:12px; box-shadow:0 8px 25px rgba(0,0,0,0.1); text-align:center; }
 h2{margin-bottom:10px;color:#1e293b;}
 p.description{color:#475569;font-size:0.95rem;margin-bottom:20px;line-height:1.6;letter-spacing:0.5px;font-style:italic;}
 .upload{padding:25px;border:3px dashed #9333ea;border-radius:15px;cursor:pointer;margin-bottom:12px;font-weight:600;color:#9333ea;transition:0.3s;}
 .upload:hover{background:#f5e6fa;transform:scale(1.03);}
 #pages-container{display:flex; flex-wrap:wrap; gap:10px; margin-top:15px; justify-content:center;}
-.page-box{width:50px; height:60px; border:2px solid #ccc; border-radius:8px; display:flex; justify-content:center; align-items:center; cursor:pointer; user-select:none; background:#f9f9f9;}
+.page-box{width:80px; height:100px; border:2px solid #ccc; border-radius:8px; display:flex; flex-direction:column; justify-content:center; align-items:center; cursor:pointer; user-select:none; background:#f9f9f9; overflow:hidden;}
 .page-box.selected{border-color:#9333ea; background:#ede6fa; font-weight:600;}
+.page-box canvas{max-width:70px; max-height:80px; display:block;}
+.page-number{margin-top:5px; font-size:0.85rem; color:#475569;}
 button{padding:12px 18px; border:none; border-radius:10px; font-weight:600; cursor:pointer; margin:10px 3px; background:#9333ea; color:#fff; transition:0.3s;}
 button:hover{background:#7e22ce;}
 #download-btn{display:none; background:#2563eb;}
@@ -29,12 +31,17 @@ button:hover{background:#7e22ce;}
 
 <div class="container">
 <h2>🗂️ Extract PDF Pages</h2>
-<p class="description">Select pages from your PDF to extract. Client-side, no API needed.</p>
+<p class="description">Select pages to extract. Live thumbnails shown. Client-side, no API needed.</p>
 
 <div class="ad-placeholder">Ad Placeholder</div>
 
 <div class="upload" onclick="document.getElementById('file').click()">📁 Upload PDF</div>
 <input type="file" id="file" accept="application/pdf" hidden>
+
+<div style="margin-top:10px;">
+<button id="select-all-btn">Select All</button>
+<button id="deselect-all-btn">Deselect All</button>
+</div>
 
 <div id="pages-container"></div>
 
@@ -50,42 +57,71 @@ button:hover{background:#7e22ce;}
 <div class="ad-placeholder">Ad Placeholder</div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script>
 let file=null;
 let pdfDoc=null;
 let selectedPages=[];
 
-document.getElementById('file').addEventListener('change',async e=>{
+document.getElementById('file').addEventListener('change', async e=>{
     file=e.target.files[0];
-    if(!file) return;
+    if(!file)return;
     if(file.size>30*1024*1024){alert('Max 30MB'); return;}
     document.getElementById('status').textContent=`✔ ${file.name} selected`;
     
     const arrayBuffer = await file.arrayBuffer();
     pdfDoc = await PDFLib.PDFDocument.load(arrayBuffer);
-    
+
+    const pdfjsDoc = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
     const container = document.getElementById('pages-container');
     container.innerHTML='';
     selectedPages=[];
-    for(let i=0;i<pdfDoc.getPageCount();i++){
+
+    for(let i=0;i<pdfjsDoc.numPages;i++){
+        const page = await pdfjsDoc.getPage(i+1);
+        const viewport = page.getViewport({scale:0.2});
+        const canvas=document.createElement('canvas');
+        canvas.width = viewport.width; canvas.height = viewport.height;
+        const ctx=canvas.getContext('2d');
+        await page.render({canvasContext:ctx, viewport:viewport}).promise;
+
         const box=document.createElement('div');
         box.className='page-box';
-        box.textContent=i+1;
+        box.appendChild(canvas);
+
+        const pageNum = document.createElement('div');
+        pageNum.className='page-number';
+        pageNum.textContent=i+1;
+        box.appendChild(pageNum);
+
         box.onclick=()=>{ 
             box.classList.toggle('selected');
             if(selectedPages.includes(i)) selectedPages=selectedPages.filter(p=>p!==i);
             else selectedPages.push(i);
         };
+
         container.appendChild(box);
     }
+});
+
+document.getElementById('select-all-btn').addEventListener('click',()=>{
+    selectedPages=[];
+    document.querySelectorAll('.page-box').forEach((box,i)=>{
+        box.classList.add('selected');
+        selectedPages.push(i);
+    });
+});
+document.getElementById('deselect-all-btn').addEventListener('click',()=>{
+    selectedPages=[];
+    document.querySelectorAll('.page-box').forEach(box=>box.classList.remove('selected'));
 });
 
 document.getElementById('extract-btn').addEventListener('click',async ()=>{
     if(!file){alert('Upload PDF first'); return;}
     if(selectedPages.length===0){alert('Select at least one page'); return;}
     document.getElementById('status').textContent='Extracting pages...';
-    
+
     const newPdf = await PDFLib.PDFDocument.create();
     for(const i of selectedPages){
         const [copied] = await newPdf.copyPages(pdfDoc,[i]);
@@ -94,13 +130,12 @@ document.getElementById('extract-btn').addEventListener('click',async ()=>{
     const pdfBytes = await newPdf.save();
     const blob = new Blob([pdfBytes],{type:'application/pdf'});
     const url = URL.createObjectURL(blob);
-    
+
     const downloadBtn=document.getElementById('download-btn');
     downloadBtn.style.display='block';
     downloadBtn.onclick=()=>{ const a=document.createElement('a'); a.href=url; a.download=file.name.replace(/\.pdf$/i,'-extracted.pdf'); a.click(); };
     document.getElementById('status').textContent='✔ Pages extracted! Download your PDF.';
 });
 </script>
-
 </body>
 </html>
