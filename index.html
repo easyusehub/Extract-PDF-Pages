@@ -4,145 +4,224 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>🗂️ Extract PDF Pages | EasyUseHub</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+
 <style>
-body, html { font-family:'Segoe UI',sans-serif; background:#fff; display:flex; justify-content:center; align-items:center; min-height:100vh; }
-.container { width:90%; max-width:750px; padding:25px; border-radius:12px; box-shadow:0 8px 25px rgba(0,0,0,0.1); text-align:center; }
-h2{margin-bottom:10px;color:#1e293b;}
-p.description{color:#475569;font-size:0.95rem;margin-bottom:20px;line-height:1.6;letter-spacing:0.5px;font-style:italic;}
-.upload{padding:25px;border:3px dashed #9333ea;border-radius:15px;cursor:pointer;margin-bottom:12px;font-weight:600;color:#9333ea;transition:0.3s;}
-.upload:hover{background:#f5e6fa;transform:scale(1.03);}
-#pages-container{display:flex; flex-wrap:wrap; gap:10px; margin-top:15px; justify-content:center;}
-.page-box{width:80px; height:100px; border:2px solid #ccc; border-radius:8px; display:flex; flex-direction:column; justify-content:center; align-items:center; cursor:pointer; user-select:none; background:#f9f9f9; overflow:hidden;}
-.page-box.selected{border-color:#9333ea; background:#ede6fa; font-weight:600;}
-.page-box canvas{max-width:70px; max-height:80px; display:block;}
-.page-number{margin-top:5px; font-size:0.85rem; color:#475569;}
-button{padding:12px 18px; border:none; border-radius:10px; font-weight:600; cursor:pointer; margin:10px 3px; background:#9333ea; color:#fff; transition:0.3s;}
-button:hover{background:#7e22ce;}
-#download-btn{display:none; background:#2563eb;}
-#download-btn:hover{background:#1e40af;}
-#status{margin-top:10px; color:#475569;}
-.bottom-buttons{display:flex;justify-content:center;gap:12px;margin-top:20px;}
-.bottom-buttons a{text-decoration:none;padding:10px 16px;border-radius:8px;background:#1e293b;color:#fff;font-weight:600;}
-.bottom-buttons a:hover{background:#3b82f6;}
-.ad-placeholder{margin:15px 0;padding:15px;border:2px dashed #ccc;border-radius:10px;color:#999;font-size:0.9rem;text-align:center;}
+:root { --primary: #9333ea; --bg: #f0f2f5; }
+body, html { margin:0; padding:0; font-family:'Segoe UI',sans-serif; background:var(--bg); display:flex; flex-direction:column; align-items:center; position: relative; overflow-x: hidden;}
+
+/* --- Premium Ad Bridges --- */
+.custom-ad-bridge {
+    background: linear-gradient(135deg, #1e3a8a, #2563eb); color: white; padding: 25px;
+    margin: 15px 0; border-radius: 12px; cursor: pointer; width: 90%; max-width: 600px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+.ad-title { font-size: 18px; font-weight: bold; display: block; margin-bottom: 5px; }
+.ad-desc { font-size: 13px; display: block; opacity: 0.9; margin-bottom: 10px; }
+.ad-btn { background: #fbbf24; color: #000; padding: 8px 18px; border-radius: 5px; font-weight: bold; text-transform: uppercase; display: inline-block; font-size: 12px; }
+
+/* --- Push Notification --- */
+#push-notification {
+    position: fixed; bottom: -150px; right: 20px; width: 300px; background: #fff; border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2); display: flex; align-items: center; padding: 12px;
+    z-index: 10000; transition: bottom 0.6s cubic-bezier(0.68, -0.55, 0.27, 1.55); cursor: pointer; border-left: 5px solid #2563eb; color: #333;
+}
+#push-notification.active { bottom: 20px; }
+#push-notification img { width: 45px; height: 45px; border-radius: 8px; margin-right: 12px; }
+.push-text b { font-size: 14px; color: #222; display: block; }
+.push-text p { font-size: 12px; color: #666; margin: 3px 0 0 0; }
+
+h1 { text-align:center; margin:20px; color: #333; }
+#instructions { width:90%; max-width:600px; margin:10px auto; text-align:center; font-size:14px; color:#555; line-height: 1.5; }
+
+/* --- Tool Components --- */
+#upload-box {
+  border:3px dashed var(--primary); border-radius:12px; padding:30px 20px; text-align:center;
+  width:85%; max-width:400px; cursor:pointer; margin:15px; background: #fff; transition: 0.3s;
+}
+#upload-box:hover { background:#f5e6fa; transform: scale(1.02); }
+
+#pages-container { display:flex; flex-wrap:wrap; justify-content:center; gap:12px; margin-top:15px; padding: 10px; }
+.page-box { 
+    width:90px; border:2px solid #ddd; border-radius:8px; display:flex; flex-direction:column; 
+    align-items:center; cursor:pointer; background:#fff; overflow:hidden; transition: 0.2s; padding: 5px;
+}
+.page-box:hover { border-color: var(--primary); transform: translateY(-3px); }
+.page-box.selected { border-color: var(--primary); background: #f5e6fa; box-shadow: 0 0 10px rgba(147,51,234,0.3); }
+.page-box canvas { max-width: 100%; height: auto; border-radius: 3px; }
+.page-number { margin-top:5px; font-size:12px; font-weight: bold; color: #555; }
+
+.action-btn { padding:12px 24px; margin:5px; border:none; border-radius:8px; background:var(--primary); color:#fff; cursor:pointer; font-weight: bold; transition: 0.3s; }
+.action-btn:hover { opacity: 0.9; transform: scale(1.03); }
+.home-btn { display:inline-block; margin:10px; padding:12px 26px; background:#444; color:#fff; text-decoration:none; font-weight:bold; border-radius: 8px; font-size: 14px; transition: 0.3s; }
+
+#status { margin: 15px 0; font-weight: bold; color: var(--primary); }
+#toast { position:fixed; top:20px; left:50%; transform:translateX(-50%); background:var(--primary); color:#fff; padding:12px 25px; border-radius:8px; display:none; z-index:99999; box-shadow:0 4px 15px rgba(0,0,0,0.3); }
 </style>
 </head>
 <body>
 
-<div class="container">
-<h2>🗂️ Extract PDF Pages</h2>
-<p style="color:#334155; font-size:0.9rem; margin-top:10px; line-height:1.6;">
-✨ <strong>How to Use:</strong><br>
-1. Upload your PDF file (Max 30MB).<br>
-2. All pages will appear with live preview.<br>
-3. Select the pages you want to extract (or use Select All).<br>
-4. Click <strong>Extract Selected Pages</strong>.<br>
-5. Download your new PDF instantly.
-</p>
-
-<div class="ad-placeholder">Ad Placeholder</div>
-
-<div class="upload" onclick="document.getElementById('file').click()">📁 Upload PDF</div>
-<input type="file" id="file" accept="application/pdf" hidden>
-
-<div style="margin-top:10px;">
-<button id="select-all-btn">Select All</button>
-<button id="deselect-all-btn">Deselect All</button>
+<div id="push-notification" onclick="window.open('https://easyusehub.blogspot.com', '_blank')">
+    <img src="https://cdn-icons-png.flaticon.com/512/5968/5968313.png" alt="icon">
+    <div class="push-text">
+        <b>🚀 46+ Premium Free Tools Ready!</b>
+        <p>PDF Tools, Calculators & more - 100% Free.</p>
+    </div>
 </div>
 
-<div id="pages-container"></div>
+<h1>🗂️ Extract PDF Pages</h1>
 
-<button id="extract-btn">Extract Selected Pages</button>
-<button id="download-btn">📥 Download PDF</button>
-<p id="status">No file selected</p>
-
-<div class="bottom-buttons">
-<a href="https://easyusehub.blogspot.com/p/free-pdf-tools-online.html" target="_blank">📂 All PDF Tools</a>
-<a href="https://easyusehub.blogspot.com/?m=1" target="_blank">🏠 Home</a>
+<div class="custom-ad-bridge" onclick="window.open('https://easyusehub.blogspot.com', '_blank')">
+    <span class="ad-title">🚀 Try 46+ Premium Free Web Tools!</span>
+    <span class="ad-desc">All PDF TOOLS, Calculators, Age Tracker & more - 100% Free</span>
+    <div class="ad-btn">Open EasyUseHub</div>
 </div>
 
-<div class="ad-placeholder">Ad Placeholder</div>
+<div id="instructions">
+    ✨ <b>How to Use:</b> Upload PDF (Max 20MB), select the pages you need, click "Extract" and download your new PDF instantly.
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<div id="upload-box">📁 Click to Upload PDF (Max 20MB)</div>
+<input type="file" id="fileInput" accept="application/pdf" hidden>
+
+<div id="controls-area" style="display:none; text-align:center;">
+    <button class="action-btn" style="background:#444;" id="select-all-btn">Select All</button>
+    <button class="action-btn" style="background:#444;" id="deselect-all-btn">Deselect All</button>
+    <div id="pages-container"></div>
+    <button class="action-btn" id="extract-btn">🚀 Extract Selected Pages</button>
+    <button class="action-btn" id="download-btn" style="display:none; background:#2563eb;">📥 Download PDF</button>
+    <p id="status"></p>
+</div>
+
+<div class="custom-ad-bridge" style="background: linear-gradient(135deg, #059669, #10b981);" onclick="window.open('https://easyusehub.blogspot.com/p/image-compressor.html', '_blank')">
+    <span class="ad-title">⚡ High-Speed Image Compressor</span>
+    <span class="ad-desc">Optimize your extracted files for free at EasyUseHub</span>
+    <div class="ad-btn" style="background: #fff; color: #059669;">Try Now</div>
+</div>
+
+<div class="custom-ad-bridge" style="background: linear-gradient(135deg, #f59e0b, #d97706);" onclick="window.open('https://easyusehub.blogspot.com/p/ultimate-calculators-hub.html', '_blank')">
+    <span class="ad-title">🔢 Smart Online Calculators</span>
+    <span class="ad-desc">Loan EMI, Age Calculator & BMI Tracker - Fast & Free</span>
+    <div class="ad-btn" style="background: #000; color: #fff;">Open Calculators</div>
+</div>
+
+<div style="margin-bottom: 30px;">
+    <a href="https://easyusehub.blogspot.com/p/free-pdf-tools-online.html" class="home-btn">📂 All PDF Tools</a>
+    <a href="https://easyusehub.blogspot.com/" class="home-btn">🏠 Home</a>
+</div>
+
+<div id="toast">✅ PDF Extracted & Downloaded!</div>
+
 <script>
-let file=null;
-let pdfDoc=null;
+let pdfBytes=null;
+let pdfDocLib=null;
 let selectedPages=[];
 
-document.getElementById('file').addEventListener('change', async e=>{
-    file=e.target.files[0];
-    if(!file)return;
-    if(file.size>30*1024*1024){alert('Max 30MB'); return;}
-    document.getElementById('status').textContent=`✔ ${file.name} selected`;
-    
-    const arrayBuffer = await file.arrayBuffer();
-    pdfDoc = await PDFLib.PDFDocument.load(arrayBuffer);
+const fileInput = document.getElementById('fileInput');
+const uploadBox = document.getElementById('upload-box');
+const controlsArea = document.getElementById('controls-area');
+const pagesContainer = document.getElementById('pages-container');
+const status = document.getElementById('status');
+const downloadBtn = document.getElementById('download-btn');
+const toast = document.getElementById('toast');
 
-    const pdfjsDoc = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
-    const container = document.getElementById('pages-container');
-    container.innerHTML='';
-    selectedPages=[];
+uploadBox.onclick = () => fileInput.click();
 
-    for(let i=0;i<pdfjsDoc.numPages;i++){
-        const page = await pdfjsDoc.getPage(i+1);
-        const viewport = page.getViewport({scale:0.2});
-        const canvas=document.createElement('canvas');
-        canvas.width = viewport.width; canvas.height = viewport.height;
-        const ctx=canvas.getContext('2d');
-        await page.render({canvasContext:ctx, viewport:viewport}).promise;
+fileInput.addEventListener('change', async e => {
+    const file = e.target.files[0];
+    if(!file) return;
 
-        const box=document.createElement('div');
-        box.className='page-box';
-        box.appendChild(canvas);
-
-        const pageNum = document.createElement('div');
-        pageNum.className='page-number';
-        pageNum.textContent=i+1;
-        box.appendChild(pageNum);
-
-        box.onclick=()=>{ 
-            box.classList.toggle('selected');
-            if(selectedPages.includes(i)) selectedPages=selectedPages.filter(p=>p!==i);
-            else selectedPages.push(i);
-        };
-
-        container.appendChild(box);
+    if(file.size > 20 * 1024 * 1024) {
+        alert("❌ File is too large! Max limit is 20MB.");
+        fileInput.value = "";
+        return;
     }
+
+    status.textContent = "Loading preview...";
+    pdfBytes = await file.arrayBuffer();
+    const pdfjsDoc = await pdfjsLib.getDocument({data: pdfBytes}).promise;
+    
+    uploadBox.style.display = "none";
+    controlsArea.style.display = "block";
+    pagesContainer.innerHTML = '';
+    selectedPages = [];
+    downloadBtn.style.display = "none";
+
+    for(let i=1; i<=pdfjsDoc.numPages; i++){
+        const page = await pdfjsDoc.getPage(i);
+        const viewport = page.getViewport({scale:0.2});
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width; canvas.height = viewport.height;
+        await page.render({canvasContext: canvas.getContext('2d'), viewport: viewport}).promise;
+
+        const box = document.createElement('div');
+        box.className = 'page-box';
+        box.innerHTML = `<div class="page-number">Page ${i}</div>`;
+        box.prepend(canvas);
+
+        box.onclick = () => {
+            box.classList.toggle('selected');
+            const idx = i - 1;
+            if(selectedPages.includes(idx)) selectedPages = selectedPages.filter(p => p !== idx);
+            else selectedPages.push(idx);
+        };
+        pagesContainer.appendChild(box);
+    }
+    status.textContent = `✔ ${file.name} loaded. Select pages to extract.`;
+    setTimeout(() => { document.getElementById('push-notification').classList.add('active'); }, 1500);
 });
 
-document.getElementById('select-all-btn').addEventListener('click',()=>{
-    selectedPages=[];
-    document.querySelectorAll('.page-box').forEach((box,i)=>{
+document.getElementById('select-all-btn').onclick = () => {
+    selectedPages = [];
+    document.querySelectorAll('.page-box').forEach((box, i) => {
         box.classList.add('selected');
         selectedPages.push(i);
     });
-});
-document.getElementById('deselect-all-btn').addEventListener('click',()=>{
-    selectedPages=[];
-    document.querySelectorAll('.page-box').forEach(box=>box.classList.remove('selected'));
-});
+};
 
-document.getElementById('extract-btn').addEventListener('click',async ()=>{
-    if(!file){alert('Upload PDF first'); return;}
-    if(selectedPages.length===0){alert('Select at least one page'); return;}
-    document.getElementById('status').textContent='Extracting pages...';
+document.getElementById('deselect-all-btn').onclick = () => {
+    selectedPages = [];
+    document.querySelectorAll('.page-box').forEach(box => box.classList.remove('selected'));
+};
 
-    const newPdf = await PDFLib.PDFDocument.create();
-    for(const i of selectedPages){
-        const [copied] = await newPdf.copyPages(pdfDoc,[i]);
-        newPdf.addPage(copied);
+document.getElementById('extract-btn').onclick = async () => {
+    if(selectedPages.length === 0) { alert("Please select at least one page."); return; }
+    
+    const extractBtn = document.getElementById('extract-btn');
+    extractBtn.disabled = true;
+    extractBtn.innerText = "Processing...";
+
+    try {
+        const sourceDoc = await PDFLib.PDFDocument.load(pdfBytes);
+        const newPdf = await PDFLib.PDFDocument.create();
+        
+        // Sort selected pages to maintain order
+        selectedPages.sort((a, b) => a - b);
+        
+        const copiedPages = await newPdf.copyPages(sourceDoc, selectedPages);
+        copiedPages.forEach(page => newPdf.addPage(page));
+
+        const resultBytes = await newPdf.save();
+        const blob = new Blob([resultBytes], {type: 'application/pdf'});
+        const url = URL.createObjectURL(blob);
+
+        downloadBtn.style.display = 'inline-block';
+        downloadBtn.onclick = () => {
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Extracted_EasyUseHub_${Date.now()}.pdf`;
+            a.click();
+            toast.style.display = 'block';
+            setTimeout(() => { toast.style.display = 'none'; }, 3000);
+        };
+        status.textContent = "✔ Extraction complete! Click Download.";
+    } catch (e) {
+        alert("Error extracting pages.");
+    } finally {
+        extractBtn.disabled = false;
+        extractBtn.innerText = "🚀 Extract Selected Pages";
     }
-    const pdfBytes = await newPdf.save();
-    const blob = new Blob([pdfBytes],{type:'application/pdf'});
-    const url = URL.createObjectURL(blob);
-
-    const downloadBtn=document.getElementById('download-btn');
-    downloadBtn.style.display='block';
-    downloadBtn.onclick=()=>{ const a=document.createElement('a'); a.href=url; a.download=file.name.replace(/\.pdf$/i,'-extracted.pdf'); a.click(); };
-    document.getElementById('status').textContent='✔ Pages extracted! Download your PDF.';
-});
+};
 </script>
 </body>
 </html>
